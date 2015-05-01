@@ -72,7 +72,7 @@ func (w *Warden) Run() error {
 }
 
 func checkAuth(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-	log.Println("No auth yet!")
+	log.Println("No auth yet! Allowing user:", conn.User())
 	return nil, nil
 }
 
