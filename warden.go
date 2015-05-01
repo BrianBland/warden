@@ -100,7 +100,7 @@ func (w *Warden) handleChannel(conn *ssh.ServerConn, newChan ssh.NewChannel) {
 		return
 	}
 
-	bash := exec.Command("docker", "run", "-it", "--rm", w.jailImage, "bash")
+	bash := exec.Command("docker", "run", "-it", "--rm", w.jailImage, "bash", "-c", jailScript(conn.User()))
 
 	close := func() {
 		ch.Close()
@@ -161,4 +161,21 @@ func (w *Warden) handleChannel(conn *ssh.ServerConn, newChan ssh.NewChannel) {
 			}
 		}
 	}()
+}
+
+const jailScriptFmt = `
+user=%s
+if [ "$user" == root ]; then
+  user=r00t
+fi
+exists=false
+(getent passwd $user && exists=true
+if ! $exists; then
+  adduser --disabled-password --gecos '' $user
+fi) > /dev/null 2>&1
+su $user
+`
+
+func jailScript(username string) string {
+	return fmt.Sprintf(jailScriptFmt, username)
 }
