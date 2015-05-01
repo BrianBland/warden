@@ -7,7 +7,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"os/exec"
+	"strings"
 	"sync"
 
 	"github.com/kr/pty"
@@ -17,7 +19,8 @@ import (
 type Warden struct {
 	addr        string
 	privateKeys []ssh.Signer
-	jailImage   string
+	jail        Jail
+	jails       map[string]string
 }
 
 func New(config Config) (*Warden, error) {
@@ -40,14 +43,16 @@ func New(config Config) (*Warden, error) {
 	if addr == "" {
 		addr = ":22"
 	}
-	jailImage := config.JailImage
-	if jailImage == "" {
-		jailImage = "ubuntu"
+	jail := config.Jail
+	if jail.Image == "" {
+		jail.Image = "ubuntu"
 	}
+
 	return &Warden{
 		addr:        addr,
 		privateKeys: privateKeys,
-		jailImage:   jailImage,
+		jail:        jail,
+		jails:       make(map[string]string),
 	}, nil
 }
 
@@ -60,8 +65,8 @@ func (w *Warden) Run() error {
 	if err != nil {
 		log.Fatalln("Failed to listen for connections:", err)
 	}
+	fmt.Printf("Listening on %s...\n", w.addr)
 	for {
-		fmt.Printf("Listening on %s...\n", w.addr)
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println("Failed to accept incoming connection:", err)
@@ -100,7 +105,25 @@ func (w *Warden) handleChannel(conn *ssh.ServerConn, newChan ssh.NewChannel) {
 		return
 	}
 
-	bash := exec.Command("docker", "run", "-it", "--rm", w.jailImage, "bash", "-c", jailScript(conn.User()))
+	var bash *exec.Cmd
+
+	if w.jail.Persistent {
+		jailID, ok := w.jails[conn.User()]
+		if !ok {
+			startJailCmd := exec.Command("docker", "run", "-d", "--name", jailName(conn), w.jail.Image, "bash", "-c", "while true; do sleep 1; done")
+			out, err := startJailCmd.CombinedOutput()
+			if err != nil {
+				log.Println("Failed to create jail:", err, string(out))
+				ch.Close()
+				return
+			}
+			jailID = strings.TrimSpace(string(out))
+			w.jails[conn.User()] = jailID
+		}
+		bash = exec.Command("docker", "exec", "-it", jailID, "bash", "-c", jailScript(conn.User()))
+	} else {
+		bash = exec.Command("docker", "run", "-it", "--rm", "--name", jailName(conn), w.jail.Image, "bash", "-c", jailScript(conn.User()))
+	}
 
 	close := func() {
 		ch.Close()
@@ -161,6 +184,10 @@ func (w *Warden) handleChannel(conn *ssh.ServerConn, newChan ssh.NewChannel) {
 			}
 		}
 	}()
+}
+
+func jailName(conn *ssh.ServerConn) string {
+	return fmt.Sprintf("warden-auto-%d-%s", os.Getpid(), conn.User())
 }
 
 const jailScriptFmt = `
