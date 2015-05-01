@@ -76,6 +76,16 @@ func (w *Warden) Run() error {
 	}
 }
 
+func (w *Warden) Cleanup() error {
+	jailIDs := make([]string, 0, len(w.jails))
+	for _, id := range w.jails {
+		jailIDs = append(jailIDs, id)
+	}
+	args := append([]string{"rm", "-f"}, jailIDs...)
+	cleanupCmd := exec.Command("docker", args...)
+	return cleanupCmd.Run()
+}
+
 func checkAuth(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
 	log.Println("No auth yet! Allowing user:", conn.User())
 	return nil, nil

@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/BrianBland/warden"
 )
@@ -27,5 +29,16 @@ func main() {
 	if err != nil {
 		log.Fatalln("Failed to create warden:", err)
 	}
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		for range signalChan {
+			log.Println("Received an interrupt, stopping warden...")
+			w.Cleanup()
+			os.Exit(1)
+		}
+	}()
+
 	w.Run()
 }
