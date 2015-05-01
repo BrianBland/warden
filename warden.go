@@ -210,6 +210,7 @@ exists=false
 if ! $exists; then
   adduser --disabled-password --gecos '' $user
 fi) > /dev/null 2>&1
+cd /home/$user
 su $user
 `
 
