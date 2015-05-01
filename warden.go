@@ -120,7 +120,7 @@ func (w *Warden) handleChannel(conn *ssh.ServerConn, newChan ssh.NewChannel) {
 	if w.jail.Persistent {
 		jailID, ok := w.jails[conn.User()]
 		if !ok {
-			startJailCmd := exec.Command("docker", "run", "-d", "--name", jailName(conn), w.jail.Image, "bash", "-c", "while true; do sleep 1; done")
+			startJailCmd := exec.Command("docker", "run", "-d", "-h", w.hostname(), "--name", jailName(conn), w.jail.Image, "bash", "-c", "while true; do sleep 1; done")
 			out, err := startJailCmd.CombinedOutput()
 			if err != nil {
 				log.Println("Failed to create jail:", err, string(out))
@@ -132,7 +132,7 @@ func (w *Warden) handleChannel(conn *ssh.ServerConn, newChan ssh.NewChannel) {
 		}
 		bash = exec.Command("docker", "exec", "-it", jailID, "bash", "-c", jailScript(conn.User()))
 	} else {
-		bash = exec.Command("docker", "run", "-it", "--rm", "--name", jailName(conn), w.jail.Image, "bash", "-c", jailScript(conn.User()))
+		bash = exec.Command("docker", "run", "-it", "--rm", "-h", w.hostname(), "--name", jailName(conn), w.jail.Image, "bash", "-c", jailScript(conn.User()))
 	}
 
 	close := func() {
@@ -194,6 +194,14 @@ func (w *Warden) handleChannel(conn *ssh.ServerConn, newChan ssh.NewChannel) {
 			}
 		}
 	}()
+}
+
+func (w *Warden) hostname() string {
+	hostname, _ := os.Hostname()
+	if hostname == "" {
+		return strings.SplitN(w.jail.Image, "/", 2)[0]
+	}
+	return hostname
 }
 
 func jailName(conn *ssh.ServerConn) string {
