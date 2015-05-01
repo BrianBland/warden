@@ -1,0 +1,18 @@
+{
+	"ImportPath": "github.com/BrianBland/warden",
+	"GoVersion": "go1.4.2",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/kr/pty",
+			"Comment": "release.r56-21-g53dd597",
+			"Rev": "53dd597300005d500d7136de51a5a2b8c3ab8f94"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh",
+			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+		}
+	]
+}

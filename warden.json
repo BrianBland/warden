@@ -1,0 +1,5 @@
+{
+	"addr": ":2020",
+	"privateKeys": ["~/.ssh/id_rsa"],
+	"jailImage": "ubuntu"
+}
