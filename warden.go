@@ -120,7 +120,7 @@ func (w *Warden) handleChannel(conn *ssh.ServerConn, newChan ssh.NewChannel) {
 	if w.jail.Persistent {
 		jailID, ok := w.jails[conn.User()]
 		if !ok {
-			startJailCmd := exec.Command("docker", "run", "-d", "-h", w.hostname(), "--name", jailName(conn), w.jail.Image, "bash", "-c", "while true; do sleep 1; done")
+			startJailCmd := exec.Command("docker", "run", "-d", "-h", w.hostname(), "--name", jailName(conn), w.jail.Image, "/sbin/init")
 			out, err := startJailCmd.CombinedOutput()
 			if err != nil {
 				log.Println("Failed to create jail:", err, string(out))
